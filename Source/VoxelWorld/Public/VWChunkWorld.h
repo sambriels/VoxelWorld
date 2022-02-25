@@ -14,7 +14,7 @@ public:
 	AVWChunkWorld();
 
 	UPROPERTY(EditAnywhere, Category="ChunkWorld")
-	TSubclassOf<AActor> ChunkClass;
+	TSubclassOf<AVWChunkBase> ChunkClass;
 
 	UPROPERTY(EditAnywhere, Category="ChunkWorld")
 	int DrawDistance = 5;

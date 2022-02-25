@@ -2,42 +2,19 @@
 
 #include "Enums.h"
 #include "FastNoiseLite.h"
-#include "ProceduralMeshComponent.h"
 
-AVWGreedyChunk::AVWGreedyChunk()
+void AVWGreedyChunk::Setup()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
-	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Mesh"));
-	Mesh->SetCastShadow(false);
-
-	Noise = new FastNoiseLite();
-
-	Blocks.SetNum(Size.X * Size.Y * Size.Z);
-
-	SetRootComponent(Mesh);
+	Blocks.SetNum(Size * Size * Size);
 }
 
-void AVWGreedyChunk::BeginPlay()
-{
-	Super::BeginPlay();
-
-	Noise->SetFrequency(0.03f);
-	Noise->SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-	Noise->SetFractalType(FastNoiseLite::FractalType_FBm);
-
-	GenerateBlocks();
-	GenerateMesh();
-	ApplyMesh();
-}
-
-void AVWGreedyChunk::GenerateBlocks()
+void AVWGreedyChunk::GenerateHeightMap()
 {
 	const FVector Location = GetActorLocation();
 
-	for (int x = 0; x < Size.X; ++x)
+	for (int x = 0; x < Size; ++x)
 	{
-		for (int y = 0; y < Size.Y; ++y)
+		for (int y = 0; y < Size; ++y)
 		{
 			const float Xpos = (x * 100 + Location.X) / 100;
 			const float Ypos = (y * 100 + Location.Y) / 100;
@@ -45,16 +22,16 @@ void AVWGreedyChunk::GenerateBlocks()
 			// Value between -1 and 1
 			const float NoiseValue = Noise->GetNoise(Xpos, Ypos);
 			// Add one so value is between 0 and 2, final value will be between 0 and Size
-			const int ScaledNoiseValue = FMath::RoundToInt((NoiseValue + 1) * Size.Z / 2);
+			const int ScaledNoiseValue = FMath::RoundToInt((NoiseValue + 1) * Size / 2);
 			// Clamp just to be safe
-			const int Height = FMath::Clamp(ScaledNoiseValue, 0, Size.Z);
+			const int Height = FMath::Clamp(ScaledNoiseValue, 0, Size);
 
 			for (int z = 0; z < Height; ++z)
 			{
 				Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
 			}
 
-			for (int z = Height; z < Size.Z; ++z)
+			for (int z = Height; z < Size; ++z)
 			{
 				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
 			}
@@ -62,30 +39,12 @@ void AVWGreedyChunk::GenerateBlocks()
 	}
 }
 
-void AVWGreedyChunk::ApplyMesh()
-{
-	Mesh->CreateMeshSection(
-		0,
-		MeshData.Vertices,
-		MeshData.Triangles,
-		MeshData.Normals,
-		MeshData.UV0,
-		TArray<FColor>(),
-		TArray<FProcMeshTangent>(),
-		false
-	);
-}
-
 void AVWGreedyChunk::GenerateMesh()
 {
 	for (int Axis = 0; Axis < 3; ++Axis)
 	{
-		const int Axis1 = (Axis +1 ) % 3;
-		const int Axis2 = (Axis +2 ) % 3;
-
-		const int MainAxisLimit = Size[Axis];
-		int Axis1Limit = Size[Axis1];
-		int Axis2Limit = Size[Axis2];
+		const int Axis1 = (Axis + 1) % 3;
+		const int Axis2 = (Axis + 2) % 3;
 
 		FIntVector DeltaAxis1 = FIntVector::ZeroValue;
 		FIntVector DeltaAxis2 = FIntVector::ZeroValue;
@@ -96,16 +55,16 @@ void AVWGreedyChunk::GenerateMesh()
 		AxisMask[Axis] = 1;
 
 		TArray<FMask> Mask;
-		Mask.SetNum(Axis1Limit * Axis2Limit);
+		Mask.SetNum(Size * Size);
 
 		// Check each slice
-		for (ChunkItr[Axis] = -1; ChunkItr[Axis] < MainAxisLimit; )
+		for (ChunkItr[Axis] = -1; ChunkItr[Axis] < Size;)
 		{
 			int MaskIndex = 0;
 
-			for (ChunkItr[Axis2] = 0; ChunkItr[Axis2] < Axis2Limit; ++ChunkItr[Axis2])
+			for (ChunkItr[Axis2] = 0; ChunkItr[Axis2] < Size; ++ChunkItr[Axis2])
 			{
-				for (ChunkItr[Axis1] = 0; ChunkItr[Axis1] < Axis1Limit; ++ChunkItr[Axis1])
+				for (ChunkItr[Axis1] = 0; ChunkItr[Axis1] < Size; ++ChunkItr[Axis1])
 				{
 					const EBlock CurrentBlock = GetBlock(ChunkItr);
 					// Next block in the direction we are iterating
@@ -117,23 +76,25 @@ void AVWGreedyChunk::GenerateMesh()
 					// If they are both opaque or both not opaque, we don't need to create a face
 					if (bIsCurrentBlockOpaque == bIsNextBlockOpaque)
 					{
-						Mask[MaskIndex++] = FMask{ EBlock::Null, 0};
-					} else if (bIsCurrentBlockOpaque)
+						Mask[MaskIndex++] = FMask{EBlock::Null, 0};
+					}
+					else if (bIsCurrentBlockOpaque)
 					{
 						Mask[MaskIndex++] = FMask{CurrentBlock, 1};
-					} else
+					}
+					else
 					{
 						Mask[MaskIndex++] = FMask{NextBlock, -1};
 					}
-				}	
+				}
 			}
 			++ChunkItr[Axis]; // Todo: get this inside for loop, should be doable
 			MaskIndex = 0;
-			
+
 			// Generate Mesh from the mask
-			for (int j = 0; j < Axis2Limit; ++j)
+			for (int j = 0; j < Size; ++j)
 			{
-				for (int i = 0; i < Axis1Limit;)
+				for (int i = 0; i < Size;)
 				{
 					if (Mask[MaskIndex].Normal != 0)
 					{
@@ -143,19 +104,18 @@ void AVWGreedyChunk::GenerateMesh()
 
 						int Width;
 
-						for (Width = 1; i + Width < Axis1Limit && CompareMask(CurrentMask, Mask[MaskIndex + Width]); ++Width)
+						for (Width = 1; i + Width < Size && CompareMask(CurrentMask, Mask[MaskIndex + Width]); ++Width)
 						{
-							
 						}
 
 						int Height;
 						bool bNextBlockIsDifferent = false;
 
-						for (Height = 1; j + Height < Axis2Limit; ++Height)
+						for (Height = 1; j + Height < Size; ++Height)
 						{
 							for (int k = 0; k < Width; ++k)
 							{
-								if (CompareMask(CurrentMask, Mask[MaskIndex + k + Height * Axis1Limit]))
+								if (CompareMask(CurrentMask, Mask[MaskIndex + k + Height * Size]))
 								{
 									continue;
 								}
@@ -167,7 +127,7 @@ void AVWGreedyChunk::GenerateMesh()
 								break;
 							}
 						}
-						
+
 						DeltaAxis1[Axis1] = Width;
 						DeltaAxis2[Axis2] = Height;
 
@@ -188,13 +148,14 @@ void AVWGreedyChunk::GenerateMesh()
 						{
 							for (int k = 0; k < Width; ++k)
 							{
-								Mask[MaskIndex + k + l * Axis1Limit] = FMask {EBlock::Null, 0};
+								Mask[MaskIndex + k + l * Size] = FMask{EBlock::Null, 0};
 							}
 						}
 
-						i+= Width;
+						i += Width;
 						MaskIndex += Width;
-					} else
+					}
+					else
 					{
 						i++;
 						MaskIndex ++;
@@ -205,7 +166,8 @@ void AVWGreedyChunk::GenerateMesh()
 	}
 }
 
-void AVWGreedyChunk::CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector V1, FIntVector V2, FIntVector V3, FIntVector V4)
+void AVWGreedyChunk::CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector V1, FIntVector V2, FIntVector V3,
+                                FIntVector V4)
 {
 	const auto Normal = FVector(AxisMask * Mask.Normal);
 
@@ -217,7 +179,7 @@ void AVWGreedyChunk::CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector V1, 
 	MeshData.Triangles.Add(VertexCount);
 	MeshData.Triangles.Add(VertexCount + 2 + Mask.Normal);
 	MeshData.Triangles.Add(VertexCount + 2 - Mask.Normal);
-	
+
 	MeshData.Triangles.Add(VertexCount + 3);
 	MeshData.Triangles.Add(VertexCount + 1 - Mask.Normal);
 	MeshData.Triangles.Add(VertexCount + 1 + Mask.Normal);
@@ -237,14 +199,14 @@ void AVWGreedyChunk::CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector V1, 
 
 int AVWGreedyChunk::GetBlockIndex(int X, int Y, int Z) const
 {
-	return Z * Size.X * Size.Y + Y * Size.X + X;
+	return Z * Size * Size + Y * Size + X;
 }
 
 EBlock AVWGreedyChunk::GetBlock(FIntVector Index) const
 {
-	if (Index.X >= Size.X ||
-		Index.Y >= Size.Y ||
-		Index.Z >= Size.Z ||
+	if (Index.X >= Size ||
+		Index.Y >= Size ||
+		Index.Z >= Size ||
 		Index.X < 0 ||
 		Index.Y < 0 ||
 		Index.Z < 0)
