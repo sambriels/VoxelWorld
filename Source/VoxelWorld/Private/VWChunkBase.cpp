@@ -9,7 +9,7 @@ AVWChunkBase::AVWChunkBase()
 
 	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>("Mesh");
 	Mesh->SetCastShadow(false);
-	
+
 	Noise = new FastNoiseLite();
 
 	SetRootComponent(Mesh);
@@ -43,7 +43,6 @@ void AVWChunkBase::ApplyMesh() const
 		// MeshData.Colors,
 		TArray<FColor>{},
 		TArray<FProcMeshTangent>(),
-		false
+		true
 	);
 }
-
