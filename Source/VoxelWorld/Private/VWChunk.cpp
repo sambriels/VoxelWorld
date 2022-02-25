@@ -1,35 +1,18 @@
 #include "VoxelWorld/Public/VWChunk.h"
 
-#include "ProceduralMeshComponent.h"
 #include "FastNoiseLite.h"
 #include "Enums.h"
 
 AVWChunk::AVWChunk()
 {
-	PrimaryActorTick.bCanEverTick = false;
+}
 
-	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Mesh"));
-	Mesh->SetCastShadow(false);
-
-	Noise = new FastNoiseLite();
-
+void AVWChunk::Setup()
+{
 	Blocks.SetNum(Size * Size * Size);
 }
 
-void AVWChunk::BeginPlay()
-{
-	Super::BeginPlay();
-
-	Noise->SetFrequency(0.03f);
-	Noise->SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-	Noise->SetFractalType(FastNoiseLite::FractalType_FBm);
-
-	GenerateBlocks();
-	GenerateMesh();
-	ApplyMesh();
-}
-
-void AVWChunk::GenerateBlocks()
+void AVWChunk::GenerateHeightMap()
 {
 	const FVector Location = GetActorLocation();
 
@@ -85,20 +68,6 @@ void AVWChunk::GenerateMesh()
 	}
 }
 
-void AVWChunk::ApplyMesh() const
-{
-	Mesh->CreateMeshSection(
-		0,
-		VertexData,
-		TriangleData,
-		TArray<FVector>(),
-		UVData,
-		TArray<FColor>(),
-		TArray<FProcMeshTangent>(),
-		false
-	);
-}
-
 // Basically check if block in position is AirBlock
 bool AVWChunk::Check(FVector Position) const
 {
@@ -116,14 +85,14 @@ bool AVWChunk::Check(FVector Position) const
 
 void AVWChunk::CreateFace(EDirection Direction, FVector Position)
 {
-	VertexData.Append(GetFaceVertices(Direction, Position));
-	UVData.Append({
+	MeshData.Vertices.Append(GetFaceVertices(Direction, Position));
+	MeshData.UV0.Append({
 		FVector2D(1, 1),
 		FVector2D(1, 0),
 		FVector2D(0, 0),
 		FVector2D(0, 1)
 	});
-	TriangleData.Append({
+	MeshData.Triangles.Append({
 		VertexCount + 3,
 		VertexCount + 2,
 		VertexCount,
@@ -145,7 +114,7 @@ TArray<FVector> AVWChunk::GetFaceVertices(EDirection Direction, FVector Position
 
 		const FVector Vertex = BlockVertexData[VertexDataIndex];
 
-		Vertices.Add(Vertex * Scale + Position);
+		Vertices.Add(Vertex + Position);
 	}
 
 	return Vertices;
@@ -167,5 +136,5 @@ FVector AVWChunk::GetPositionInDirection(EDirection Direction, FVector Position)
 
 int AVWChunk::GetBlockIndex(int X, int Y, int Z) const
 {
-	return ((Z * Size) * Size) + (Y * Size) + X;
+	return Z * Size * Size + Y * Size + X;
 }

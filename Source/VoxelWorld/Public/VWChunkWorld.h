@@ -9,18 +9,21 @@ UCLASS()
 class VOXELWORLD_API AVWChunkWorld : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AVWChunkWorld();
 
 	UPROPERTY(EditAnywhere, Category="ChunkWorld")
-	TSubclassOf<AActor> Chunk;
+	TSubclassOf<AActor> ChunkClass;
 
 	UPROPERTY(EditAnywhere, Category="ChunkWorld")
 	int DrawDistance = 5;
 
 	UPROPERTY(EditAnywhere, Category="ChunkWorld")
 	int ChunkSize = 32;
+
+	UPROPERTY(EditDefaultsOnly, Category="HeightMap")
+	float Frequency = 0.03f;
 
 protected:
 	virtual void BeginPlay() override;
