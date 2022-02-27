@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ChunkMeshData.h"
+#include "Utils/ChunkMeshData.h"
+#include "Utils/Enums.h"
 #include "GameFramework/Actor.h"
 #include "VWChunkBase.generated.h"
 
-enum class EBlock;
 class FastNoiseLite;
 class UProceduralMeshComponent;
 
@@ -15,29 +15,32 @@ UCLASS(Abstract)
 class VOXELWORLD_API AVWChunkBase : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AVWChunkBase();
 
 	UPROPERTY(EditDefaultsOnly, Category="Chunk")
 	int Size = 64;
 
-	UPROPERTY(EditDefaultsOnly, Category="HeightMap")
 	float Frequency = 0.03f;
+	EGenerationType GenerationType;
+	bool GenerateCollision = false;
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void Setup(){};
-	virtual void GenerateHeightMap(){}
-	virtual void GenerateMesh(){};
+
+	virtual void Setup() PURE_VIRTUAL(AVWChunkBase::Setup);
+	virtual void Generate2DHeightMap(const FVector Position) PURE_VIRTUAL(AChunkBase::Generate2DHeightMap);
+	virtual void Generate3DHeightMap(const FVector Position) PURE_VIRTUAL(AChunkBase::Generate3DHeightMap);
+	virtual void GenerateMesh() PURE_VIRTUAL(AVWChunkBase::GenerateMesh);
 
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 	TObjectPtr<FastNoiseLite> Noise;
 
 	FChunkMeshData MeshData;
 	TArray<EBlock> Blocks;
-
-	int VertexCount;
+	int VertexCount = 0;
 private:
 	virtual void ApplyMesh() const;
+	virtual void GenerateHeightMap();
 };

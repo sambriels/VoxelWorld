@@ -1,15 +1,53 @@
-#include "VWMarchingChunk.h"
+#include "Chunks/VWMarchingChunk.h"
 
-#include "FastNoiseLite.h"
+#include "Utils/FastNoiseLite.h"
 
 void AVWMarchingChunk::Setup()
 {
 	Voxels.SetNum((Size + 1) * (Size + 1) * (Size + 1));
+	GEngine->AddOnScreenDebugMessage(1, 10.0f, FColor::Green, FString::Printf(TEXT("%d"), bUseInterpolation));
+}
+
+void AVWMarchingChunk::Generate2DHeightMap(FVector Position)
+{
+	for (int x = 0; x <= Size; x++)
+	{
+		for (int y = 0; y <= Size; y++)
+		{
+			const float Xpos = x + Position.X;
+			const float ypos = y + Position.Y;
+
+			const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, ypos) + 1) * Size / 2), 0, Size);
+
+			for (int z = 0; z < Height; z++)
+			{
+				Voxels[GetVoxelIndex(x, y, z)] = 1.0f;
+			}
+
+			for (int z = Height; z < Size; z++)
+			{
+				Voxels[GetVoxelIndex(x, y, z)] = -1.0f;
+			}
+		}
+	}
+}
+
+void AVWMarchingChunk::Generate3DHeightMap(FVector Position)
+{
+	for (int x = 0; x <= Size; ++x)
+	{
+		for (int y = 0; y <= Size; ++y)
+		{
+			for (int z = 0; z <= Size; ++z)
+			{
+				Voxels[GetVoxelIndex(x, y, z)] = Noise->GetNoise(x + Position.X, y + Position.Y, z + Position.Z);
+			}
+		}
+	}
 }
 
 void AVWMarchingChunk::GenerateMesh()
 {
-	Super::GenerateMesh();
 	if (SurfaceLevel > 0.0f)
 	{
 		TriangleOrder[0] = 0;
@@ -33,28 +71,12 @@ void AVWMarchingChunk::GenerateMesh()
 			{
 				for (int i = 0; i < 8; ++i)
 				{
-					Cube[i] = Voxels[GetVoxelIndex(X + VertexOffset[i][0], Y + VertexOffset[i][1], Z + VertexOffset[i][2])];
+					Cube[i] = Voxels[GetVoxelIndex(X + VertexOffset[i][0], Y + VertexOffset[i][1],
+					                               Z + VertexOffset[i][2])];
 				}
 				March(X, Y, Z, Cube);
 			}
-		}	
-	}
-}
-
-void AVWMarchingChunk::GenerateHeightMap()
-{
-	Super::GenerateHeightMap();
-	const auto Position = GetActorLocation() / 100;
-
-	for (int X = 0; X <= Size; ++X)
-	{
-		for (int Y = 0; Y <= Size; ++Y)
-		{
-			for (int Z = 0; Z <= Size; ++Z)
-			{
-				Voxels[GetVoxelIndex(X, Y, Z)] = Noise->GetNoise(X + Position.X, Y + Position.Y, Z + Position.Z);
-			}
-		}	
+		}
 	}
 }
 
@@ -82,7 +104,9 @@ void AVWMarchingChunk::March(int X, int Y, int Z, const float Cube[8])
 	{
 		if ((EdgeMask & 1 << i) != 0)
 		{
-			const float Offset = bUseInterpolation ? GetInterpolationOffset(Cube[EdgeConnection[i][0]], Cube[EdgeConnection[i][1]]) : 0.5f;
+			const float Offset = bUseInterpolation
+				                     ? GetInterpolationOffset(Cube[EdgeConnection[i][0]], Cube[EdgeConnection[i][1]])
+				                     : 0.5f;
 			EdgeVertex[i].X = X + (VertexOffset[EdgeConnection[i][0]][0] + Offset * EdgeDirection[i][0]);
 			EdgeVertex[i].Y = Y + (VertexOffset[EdgeConnection[i][0]][1] + Offset * EdgeDirection[i][1]);
 			EdgeVertex[i].Z = Z + (VertexOffset[EdgeConnection[i][0]][2] + Offset * EdgeDirection[i][2]);

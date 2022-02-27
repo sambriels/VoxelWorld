@@ -1,6 +1,7 @@
-#include "VWChunkBase.h"
+#include "Chunks/VWChunkBase.h"
 
-#include "FastNoiseLite.h"
+#include "Utils/FastNoiseLite.h"
+#include "Utils/Enums.h"
 #include "ProceduralMeshComponent.h"
 
 AVWChunkBase::AVWChunkBase()
@@ -32,6 +33,21 @@ void AVWChunkBase::BeginPlay()
 	ApplyMesh();
 }
 
+void AVWChunkBase::GenerateHeightMap()
+{
+	switch (GenerationType)
+	{
+	case EGenerationType::GT_3D:
+		Generate3DHeightMap(GetActorLocation() / 100);
+		break;
+	case EGenerationType::GT_2D:
+		Generate2DHeightMap(GetActorLocation() / 100);
+		break;
+	default:
+		throw std::invalid_argument("Invalid Generation Type");
+	}
+}
+
 void AVWChunkBase::ApplyMesh() const
 {
 	Mesh->CreateMeshSection(
@@ -43,6 +59,6 @@ void AVWChunkBase::ApplyMesh() const
 		// MeshData.Colors,
 		TArray<FColor>{},
 		TArray<FProcMeshTangent>(),
-		true
+		GenerateCollision
 	);
 }

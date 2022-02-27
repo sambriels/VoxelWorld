@@ -1,11 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Utils/Enums.h"
 #include "VWChunkBase.h"
 #include "VWChunk.generated.h"
 
-enum class EBlock;
-enum class EDirection;
 class FastNoiseLite;
 class UProceduralMeshComponent;
 
@@ -14,14 +13,13 @@ class AVWChunk : public AVWChunkBase
 {
 	GENERATED_BODY()
 
-public:
-	AVWChunk();
+protected:
+	virtual void Setup() override;
+	virtual void Generate2DHeightMap(FVector Position) override;
+	virtual void Generate3DHeightMap(FVector Position) override;
+	virtual void GenerateMesh() override;
 
 private:
-	virtual void Setup() override;
-	virtual void GenerateMesh() override;
-	virtual void GenerateHeightMap() override;
-
 	bool Check(FVector Position) const;
 	void CreateFace(EDirection Direction, FVector Position);
 	TArray<FVector> GetFaceVertices(EDirection Direction, FVector Position) const;
@@ -31,6 +29,15 @@ private:
 	TArray<EBlock> Blocks;
 
 	int VertexCount = 0;
+
+	inline static const auto DirectionOrder = {
+		EDirection::Forward,
+		EDirection::Right,
+		EDirection::Back,
+		EDirection::Left,
+		EDirection::Up,
+		EDirection::Down
+	};
 
 	const FVector BlockVertexData[8] = {
 		FVector(100, 100, 100),

@@ -1,27 +1,21 @@
-#include "VoxelWorld/Public/VWChunk.h"
+#include "Chunks/VWChunk.h"
 
-#include "FastNoiseLite.h"
-#include "Enums.h"
-
-AVWChunk::AVWChunk()
-{
-}
+#include "Utils/FastNoiseLite.h"
+#include "Utils/Enums.h"
 
 void AVWChunk::Setup()
 {
 	Blocks.SetNum(Size * Size * Size);
 }
 
-void AVWChunk::GenerateHeightMap()
+void AVWChunk::Generate2DHeightMap(FVector Position)
 {
-	const FVector Location = GetActorLocation();
-
 	for (int x = 0; x < Size; ++x)
 	{
 		for (int y = 0; y < Size; ++y)
 		{
-			const float Xpos = (x * 100 + Location.X) / 100;
-			const float Ypos = (y * 100 + Location.Y) / 100;
+			const float Xpos = (x * 100 + Position.X) / 100;
+			const float Ypos = (y * 100 + Position.Y) / 100;
 
 			// Value between -1 and 1
 			const float NoiseValue = Noise->GetNoise(Xpos, Ypos);
@@ -38,6 +32,29 @@ void AVWChunk::GenerateHeightMap()
 			for (int z = Height; z < Size; ++z)
 			{
 				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+			}
+		}
+	}
+}
+
+void AVWChunk::Generate3DHeightMap(FVector Position)
+{
+	for (int x = 0; x < Size; ++x)
+	{
+		for (int y = 0; y < Size; ++y)
+		{
+			for (int z = 0; z < Size; ++z)
+			{
+				const auto NoiseValue = Noise->GetNoise(x + Position.X, y + Position.Y, z + Position.Z);
+
+				if (NoiseValue >= 0)
+				{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+				}
+				else
+				{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+				}
 			}
 		}
 	}

@@ -1,23 +1,44 @@
-#include "VWGreedyChunk.h"
+#include "Chunks/VWGreedyChunk.h"
 
-#include "Enums.h"
-#include "FastNoiseLite.h"
+#include "Utils/Enums.h"
+#include "Utils/FastNoiseLite.h"
 
 void AVWGreedyChunk::Setup()
 {
 	Blocks.SetNum(Size * Size * Size);
 }
 
-void AVWGreedyChunk::GenerateHeightMap()
+void AVWGreedyChunk::Generate3DHeightMap(FVector Position)
 {
-	const FVector Location = GetActorLocation();
-
 	for (int x = 0; x < Size; ++x)
 	{
 		for (int y = 0; y < Size; ++y)
 		{
-			const float Xpos = (x * 100 + Location.X) / 100;
-			const float Ypos = (y * 100 + Location.Y) / 100;
+			for (int z = 0; z < Size; ++z)
+			{
+				const auto NoiseValue = Noise->GetNoise(x + Position.X, y + Position.Y, z + Position.Z);
+
+				if (NoiseValue >= 0)
+				{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+				}
+				else
+				{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+				}
+			}
+		}
+	}
+}
+
+void AVWGreedyChunk::Generate2DHeightMap(FVector Position)
+{
+	for (int x = 0; x < Size; ++x)
+	{
+		for (int y = 0; y < Size; ++y)
+		{
+			const float Xpos = (x * 100 + Position.X) / 100;
+			const float Ypos = (y * 100 + Position.Y) / 100;
 
 			// Value between -1 and 1
 			const float NoiseValue = Noise->GetNoise(Xpos, Ypos);

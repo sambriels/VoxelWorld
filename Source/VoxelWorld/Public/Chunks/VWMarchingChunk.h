@@ -10,21 +10,23 @@ class VOXELWORLD_API AVWMarchingChunk : public AVWChunkBase
 	GENERATED_BODY()
 
 public:
-	virtual void Setup() override;
-	virtual void GenerateMesh() override;
-	virtual void GenerateHeightMap() override;
-	
 	UPROPERTY(EditDefaultsOnly, Category="Marching Cubes")
 	float SurfaceLevel = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category="Marching Cubes")
 	bool bUseInterpolation = false;
 
+protected:
+	virtual void Setup() override;
+	virtual void Generate2DHeightMap(FVector Position) override;
+	virtual void Generate3DHeightMap(FVector Position) override;
+	virtual void GenerateMesh() override;
+
 private:
 	void March(int X, int Y, int Z, const float Cube[8]);
 	int GetVoxelIndex(int X, int Y, int Z) const;
 	float GetInterpolationOffset(float V1, float V2) const;
-	
+
 	TArray<float> Voxels;
 	int TriangleOrder[3] = {0, 1, 2};
 
@@ -37,7 +39,7 @@ private:
 		{0, 1}, {1, 2}, {2, 3}, {3, 0},
 		{4, 5}, {5, 6}, {6, 7}, {7, 4},
 		{0, 4}, {1, 5}, {2, 6}, {3, 7}
-	};         
+	};
 
 	const float EdgeDirection[12][3] = {
 		{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f},
