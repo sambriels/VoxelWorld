@@ -33,26 +33,21 @@ void AVWGreedyChunk::Generate3DHeightMap(FVector Position)
 
 void AVWGreedyChunk::Generate2DHeightMap(FVector Position)
 {
-	for (int x = 0; x < Size; ++x)
+	for (int x = 0; x < Size; x++)
 	{
-		for (int y = 0; y < Size; ++y)
+		for (int y = 0; y < Size; y++)
 		{
-			const float Xpos = (x * 100 + Position.X) / 100;
-			const float Ypos = (y * 100 + Position.Y) / 100;
+			const float Xpos = x + Position.X;
+			const float Ypos = y + Position.Y;
 
-			// Value between -1 and 1
-			const float NoiseValue = Noise->GetNoise(Xpos, Ypos);
-			// Add one so value is between 0 and 2, final value will be between 0 and Size
-			const int ScaledNoiseValue = FMath::RoundToInt((NoiseValue + 1) * Size / 2);
-			// Clamp just to be safe
-			const int Height = FMath::Clamp(ScaledNoiseValue, 0, Size);
+			const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2), 0, Size);
 
-			for (int z = 0; z < Height; ++z)
+			for (int z = 0; z < Height; z++)
 			{
 				Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
 			}
 
-			for (int z = Height; z < Size; ++z)
+			for (int z = Height; z < Size; z++)
 			{
 				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
 			}
